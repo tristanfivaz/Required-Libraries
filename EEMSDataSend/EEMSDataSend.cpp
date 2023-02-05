@@ -23,7 +23,7 @@
 #include <WiFiUdp.h>
 #include <TimeLib.h>
 
-EEMSDataSend::EEMSDataSend(char* fingerprint, char* ssid, char* password, String streamKey, String authorizationToken)
+EEMSDataSend::EEMSDataSend(char* fingerprint, char* ssid, char* password, String* streamKey, int numberOfStreamKeys, String authorizationToken)
 {
  	_ssid = ssid;
 	_password = password;
@@ -31,15 +31,16 @@ EEMSDataSend::EEMSDataSend(char* fingerprint, char* ssid, char* password, String
 	_httpsPort = 443;
 	_fingerprint = fingerprint;
 	_streamKey = streamKey;
+  _numberOfStreamKeys = numberOfStreamKeys;
 	_authorizationToken = authorizationToken;
 }
 
-void EEMSDataSend::sendData(float sensorValue)
+void EEMSDataSend::sendData(float* sensorValue)
 {
   _sensorValue = sensorValue;
   WiFiUDP ntpUDP;
-  NTPClient timeClient(ntpUDP, "au.pool.ntp.org", -7200);
-  String Link = "/public/v2/streams/" + _streamKey + "/logs";
+  NTPClient timeClient(ntpUDP, "au.pool.ntp.org");
+  String Link = "/public/v2/streams/logs";
 
   delay(1000);
   Serial.begin(115200);
@@ -76,7 +77,12 @@ void EEMSDataSend::sendData(float sensorValue)
 
   
   Serial.printf("Using fingerprint '%s'\n", _fingerprint);
-  httpsClient.setFingerprint(_fingerprint);
+  if (_fingerprint == ""){
+    httpsClient.setInsecure();
+  }
+  else{
+    httpsClient.setFingerprint(_fingerprint);
+  }
   httpsClient.setTimeout(15000); // 15 Seconds
   delay(1000);
   
@@ -97,8 +103,18 @@ void EEMSDataSend::sendData(float sensorValue)
 
   Serial.print("requesting URL: ");
   Serial.println(_host);
+  Serial.println(_numberOfStreamKeys);
+  String payloadData = "[";
+  for (int valueIndex = 0; valueIndex < _numberOfStreamKeys; valueIndex++){
+    Serial.println(_streamKey[valueIndex]);
+    payloadData = payloadData + "{\"StreamKey\": \"" + _streamKey[valueIndex] + "\" ,\"Values\": [{\"Ts\": \"" + String(dateTimeBuffer) + "\",\"Val\": " + String(_sensorValue[valueIndex]) + ",\"ValStr\": \"string\",\"Calculated\": true}]}";
+    if (valueIndex + 1 != _numberOfStreamKeys){
+      payloadData = payloadData + ",";
+    }
+  }
+  payloadData = payloadData + "]";
 
-  String payloadData = "[{\"Ts\": \"" + String(dateTimeBuffer) + "\",\"Val\": " + String(_sensorValue) + ",\"ValStr\": \"string\",\"Calculated\": true}]";
+  //String payloadData = "[{\"Ts\": \"" + String(dateTimeBuffer) + "\",\"Val\": " + String(_sensorValue) + ",\"ValStr\": \"string\",\"Calculated\": true}]";
   Serial.println(payloadData);
   httpsClient.print(String("POST ") + Link + " HTTP/1.1\r\n" +
                "Host: " + _host + "\r\n" +

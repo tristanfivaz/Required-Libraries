@@ -20,8 +20,8 @@
 class EEMSDataSend
 {
   public:
-    EEMSDataSend(char* fingerprint, char* ssid, char* password, String streamKey, String authorizationToken);
-    void sendData(float sensorValue);
+    EEMSDataSend(char* fingerprint, char* ssid, char* password, String* streamKey, int numberOfStreamKeys, String authorizationToken);
+    void sendData(float* sensorValue);
     void dash();
   private:
 	char* _ssid;
@@ -29,9 +29,10 @@ class EEMSDataSend
 	char* _host;
 	int _httpsPort;
 	char* _fingerprint;
-	String _streamKey;
+	String* _streamKey;
+  int _numberOfStreamKeys;
 	String _authorizationToken;
-	float _sensorValue;
+	float* _sensorValue;
 	
 };
 
